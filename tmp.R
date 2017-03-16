@@ -485,7 +485,7 @@ stew(file="Aaron_pomp_results.rda",{
                 .packages="pomp",
                 .options.multicore=list(set.seed=TRUE)
         ) %dopar% {
-          pfilter(m1,Np=10000,params=p)
+          pfilter(m1,Np=2000,params=p)
         } -> pf
         logmeanexp(sapply(pf,logLik),se=TRUE)->ll
         
