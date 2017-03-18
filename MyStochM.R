@@ -1,3 +1,15 @@
+#Packages to install
+install.packages("pomp")
+install.packages("plyr")
+install.packages("reshape2")
+install.packages("magrittr")
+install.packages("ggplot2")
+install.packages("foreach")
+install.packages("doParallel")
+
+
+#Load packages
+
 library(pomp)
 library(plyr)
 library(reshape2)
@@ -219,7 +231,7 @@ stew(file="MyStoch_pomp_results.rda",{
     ####################################################'
     
     #first fit with larger sd's of rw
-    firstFit <- mif2(m1, Nmif = 5, start = parest, Np = 10, #10 was 10000
+    firstFit <- mif2(m1, Nmif = 50, start = parest, Np = 10000, #10 was 10000
                      rw.sd = rw.sd(
                        R0=0.03, mu=0.03, sigma=0.03, gamma=0.03, 
                        rho=0.03, phi=0.03,
@@ -232,12 +244,12 @@ stew(file="MyStoch_pomp_results.rda",{
     
     
     # Second fit with smaller sd's of rw
-    secondFit<-continue(firstFit, Nmif = 5,
+    secondFit<-continue(firstFit, Nmif = 50,
                         rw.sd = rw.sd(
-                          R0=0.02, mu=0.02, sigma=0.02, gamma=0.02, 
-                          rho=0.02,
-                          phi=0.02, amplitude=0.02,
-                          S_0=ivp(0.02), E_0=ivp(0.02), I_0=ivp(0.02), R_0=ivp(0.02)))
+                          R0=0.01, mu=0.01, sigma=0.01, gamma=0.01, 
+                          rho=0.01,
+                          phi=0.01, amplitude=0.01,
+                          S_0=ivp(0.01), E_0=ivp(0.01), I_0=ivp(0.01), R_0=ivp(0.01)))
     
     theta<-coef(m1) <- coef(secondFit)
     #Saving model
@@ -268,8 +280,8 @@ stew(file="MyStoch_pomp_results.rda",{
       
       
       profileDesign(
-        assign(paste0(parr),seq(from=FROM ,to=TO ,length=50)),# 2 was 20
-        lower=theta.t.lo,upper=theta.t.hi,nprof=40            # 4 was 40
+        assign(paste0(parr),seq(from=FROM ,to=TO ,length=100)),# 2 was 20
+        lower=theta.t.lo,upper=theta.t.hi,nprof=50            # 4 was 40
       ) -> pd 
       names(pd)[1]<-paste0(parr)
       
@@ -313,13 +325,13 @@ stew(file="MyStoch_pomp_results.rda",{
         
         m1 %>% 
           mif2(start = unlist(p),
-               Nmif = 3,         # 3 was much higher
+               Nmif = 50,         # 3 was much higher
                rw.sd = rw.sd(
                  R0=R0_rw.sd, mu=mu_rw.sd, sigma=sigma_rw.sd, gamma=gamma_rw.sd, 
                  alpha=alpha_rw.sd, iota=iota_rw.sd, rho=rho_rw.sd, sigmaSE=sigmaSE_rw.sd, 
                  psi=psi_rw.sd, cohort=cohort_rw.sd, amplitude=amplitude_rw.sd,
                  S_0=ivp(S_0_rw.sd),E_0=ivp(E_0_rw.sd),I_0=ivp(I_0_rw.sd),R_0=ivp(R_0_rw.sd)),
-               Np = 10,                          # 10 was 10000
+               Np = 10000,                          # 10 was 10000
                cooling.type = "geometric",
                cooling.fraction.50 = 0.1,
                transform = TRUE) %>%
@@ -331,7 +343,7 @@ stew(file="MyStoch_pomp_results.rda",{
                 .packages="pomp",
                 .options.multicore=list(set.seed=TRUE)
         ) %dopar% {
-          pfilter(mf, Np = 10)
+          pfilter(mf, Np = 2000)
         } -> pf
         ##################################################################################################'       
         

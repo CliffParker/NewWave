@@ -1,3 +1,14 @@
+#Packages to install
+install.packages("pomp")
+install.packages("plyr")
+install.packages("reshape2")
+install.packages("magrittr")
+install.packages("ggplot2")
+install.packages("foreach")
+install.packages("doParallel")
+
+#Load Packages
+
 library(pomp)
 library(plyr)
 library(reshape2)
@@ -255,8 +266,8 @@ stew(file="DeterministicPOMP_M.rda",{
       
       
       profileDesign(
-        assign(paste0(parr),seq(from=FROM ,to=TO ,length=50)),# 2 was 20
-        lower=theta.t.lo,upper=theta.t.hi,nprof=40            # 4 was 40
+        assign(paste0(parr),seq(from=FROM ,to=TO ,length=100)),# 2 was 20
+        lower=theta.t.lo,upper=theta.t.hi,nprof=50            # 4 was 40
       ) -> pd 
       names(pd)[1]<-paste0(parr)
       
