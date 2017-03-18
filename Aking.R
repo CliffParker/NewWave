@@ -1,7 +1,3 @@
-"This is a good work done this script reads data online, creates subdata then runs
-the parameter estimation and confidence interval for all parameters and all cities then
-saves them."
-
 #Try to learn how to use do parallel to reduce computation  time.
 
 ###############################################################################################################'
@@ -279,7 +275,7 @@ stew(file="Aaron_pomp_results.rda",{
     
   
     # Second fit with smaller sd's of rw
-    secondFit<-continue(firstFit, 
+    secondFit<-continue(firstFit, Nmif = 5,
                         rw.sd = rw.sd(
                           R0=0.02, mu=0.02, sigma=0.02, gamma=0.02, 
                           alpha=0.02, iota=0.02, rho=0.02, sigmaSE=0.02, 
@@ -315,14 +311,15 @@ stew(file="Aaron_pomp_results.rda",{
       
       
       profileDesign(
-        assign(paste0(parr),seq(from=FROM ,to=TO ,length=2)),# 2 was 20
-        lower=theta.t.lo,upper=theta.t.hi,nprof=4            # 4 was 40
-      ) -> pd
+        assign(paste0(parr),seq(from=FROM ,to=TO ,length=50)),# 2 was 20
+        lower=theta.t.lo,upper=theta.t.hi,nprof=40            # 4 was 40
+      ) -> pd 
+      names(pd)[1]<-paste0(parr)
       
-      pd <- as.data.frame(t(partrans(m1,t(pd),"fromEstimationScale")))[,-1]
+      pd <- as.data.frame(t(partrans(m1,t(pd),"fromEstimationScale")))
       
       ########### par_rw.sd
-      for (par in parnames) {
+      for (par in names(coef(m1))) {
         assign(paste0(par,"_rw.sd"),0.02)
       }
       assign(paste0(parr,"_rw.sd"),0)

@@ -185,7 +185,7 @@ loglik.normal <- function (params) {
 
 
 traj.match(seas.sir, start=coef(seas.sir), est = c("beta0","beta1","phi"),
- method ="subplex",transform = FALSE)
+ method ="subplex",transform = FALSE)->fit
 
 #'method = c("Nelder-Mead","subplex","SANN","BFGS",
 #'"sannbox","nloptr")
