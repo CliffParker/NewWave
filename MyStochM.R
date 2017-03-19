@@ -149,11 +149,30 @@ initz <- Csnippet("
                  R = nearbyint(m*R_0);
                  H = 0;
                  ")
-
-
-dmeas <- Csnippet("lik = dbinom(cases,H,rho,give_log);")
-
-rmeas <- Csnippet("cases = rbinom(H,rho);")
+# Sampling from the normal approximation of the binomial distribution
+dmeas <- Csnippet("
+                  double m = rho*H;
+                  double v = m*(1.0-rho);
+                  double tol = 1.0e-5;
+                  if (v>0){
+                  lik = dnorm(cases,m,sqrt(v),give_log);
+                  }else{
+                  lik = dnorm(cases,m,sqrt(v+tol)+tol,give_log);
+                  }
+                 ")
+# Aaron's dmeas
+# dmeas <- Csnippet("double psi = .99;
+#                   double m = rho*H;
+#                   double v = m*(1.0-rho+psi*psi*m);
+#                   double tol = 1.0e-18;
+#                   if (cases > 0.0) {
+#                   lik = pnorm(cases+0.5,m,sqrt(v)+tol,1,0)-pnorm(cases-0.5,m,sqrt(v)+tol,1,0)+tol;
+#                   } else {
+#                   lik = pnorm(cases+0.5,m,sqrt(v)+tol,1,0)+tol;
+#                   }
+#                   ")
+# # 
+ rmeas <- Csnippet("cases = rbinom(H,rho);")
 
 
 
@@ -188,14 +207,14 @@ fromEst <- Csnippet("
 #################################################################### run ########################'
 #################################################################################################'
 #################################################################################################'
-stew(file="MyStoch_pomp_results.rda",{
+stew(file="MyStoch11_pomp_results.rda",{
   
   registerDoParallel()
   #####################################################################################################'
   
   #' Parameters to be estimated
-  names<-levels(demog$town)
-  #name<-names <-c("London")
+  #names<-levels(demog$town)
+  name<-names <-c("London")
   for (name in names) {
     #Assigning to parest the right name associated parameters
     parest <- get(paste0(name,"_pars"))
@@ -235,7 +254,6 @@ stew(file="MyStoch_pomp_results.rda",{
                      rw.sd = rw.sd(
                        R0=0.03, mu=0.03, sigma=0.03, gamma=0.03, 
                        rho=0.03, phi=0.03,
-                       S_0=ivp(0.02),E_0=ivp(0.02),I_0=ivp(0.02),R_0=ivp(0.02),
                       amplitude=0.3),
                      transform = T,
                      cooling.type = "hyperbolic", cooling.fraction.50 = .05,
@@ -248,8 +266,7 @@ stew(file="MyStoch_pomp_results.rda",{
                         rw.sd = rw.sd(
                           R0=0.01, mu=0.01, sigma=0.01, gamma=0.01, 
                           rho=0.01,
-                          phi=0.01, amplitude=0.01,
-                          S_0=ivp(0.01), E_0=ivp(0.01), I_0=ivp(0.01), R_0=ivp(0.01)))
+                          phi=0.01, amplitude=0.01))
     
     theta<-coef(m1) <- coef(secondFit)
     #Saving model

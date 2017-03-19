@@ -99,7 +99,7 @@ rproc <- Csnippet("
                   // transmission rate
                   beta0 = R0*(gamma+mu)*(sigma+mu)/sigma;
                   double Beta = beta0*(1+amplitude*cos(2*M_PI*(t-phi)))/pop;
-                  //double t8 = rbinom(R,1-exp(-mu*dt));  // natural R death
+                  double t8 = rbinom(R,1-exp(-mu*dt));  // natural R death
                   double rate[6], trans[6];
                   
                   
@@ -122,7 +122,7 @@ rproc <- Csnippet("
                   S += births - trans[0] - trans[1];
                   E += trans[0] - trans[2] - trans[3];
                   I += trans[2] - trans[4] - trans[5];
-                  R = pop - S - E - I;
+                  R += trans[4] - t8 ;//R = pop - S - E - I;
                   H += trans[4];           // true incidence
                   "
 )
@@ -138,9 +138,18 @@ initz <- Csnippet("
                  H = 0;
                  ")
 
-
-dmeas <- Csnippet("lik = dbinom(cases,H,rho,give_log);")
-
+# 
+# dmeas <- Csnippet("lik = dbinom(cases,H,rho,give_log);")
+dmeas <- Csnippet("
+                  double m = rho*H;
+                  double v = m*(1.0-rho);
+                  double tol = 1.0e-10;
+                  if (v>0){
+                  lik = dnorm(cases,m,sqrt(v),give_log);
+                  }else{
+                  lik = dnorm(cases,m,sqrt(v+tol),give_log);
+                  }
+                  ")
 rmeas <- Csnippet("cases = rbinom(H,rho);")
 
 
@@ -183,7 +192,7 @@ stew(file="MyStoch_pomp_results.rda",{
   
   #' Parameters to be estimated
   names<-levels(demog$town)
-  #name<-names <-c("London")
+ # name<-names <-c("London")
   for (name in names) {
     #Assigning to parest the right name associated parameters
     parest <- get(paste0(name,"_pars"))
@@ -229,7 +238,7 @@ stew(file="MyStoch_pomp_results.rda",{
                      cooling.type = "hyperbolic", cooling.fraction.50 = .05,
                      tol = 1e-17, max.fail = Inf, verbose = getOption("verbose"))
     
-    
+    logLik(firstFit)
     
     # Second fit with smaller sd's of rw
     secondFit<-continue(firstFit, Nmif = 5,

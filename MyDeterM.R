@@ -154,12 +154,21 @@ fromEst <- Csnippet("
 #' The Data is  binomial distributed 
 #' 
 
+# dmeas <- Csnippet("
+#   double m = rho*H;
+#                   double v = m*(1.0-rho);
+#                   lik = dnorm(cases,m,sqrt(v),give_log);
+#                   ")
 dmeas <- Csnippet("
-  double m = rho*H;
+                  double m = rho*H;
                   double v = m*(1.0-rho);
+                  double tol = 1.0e-5;
+                  if (v>0){
                   lik = dnorm(cases,m,sqrt(v),give_log);
+                  }else{
+                  lik = dnorm(cases,m,sqrt(v+tol)+tol,give_log);
+                  }
                   ")
-
 rmeas <- Csnippet("
                   double m = rho*H;
                   double v = m*(1.0-rho);
