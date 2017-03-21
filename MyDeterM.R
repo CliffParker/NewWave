@@ -191,7 +191,7 @@ rmeas <- Csnippet("
 #################################################################################################'
 #################################################################################################'
 
-stew(file="DeterministicPOMP_M.rda",{
+stew(file="MDeterministicPOMP_M.rda",{
   
   registerDoParallel()
   #####################################################################################################'
@@ -259,23 +259,23 @@ stew(file="DeterministicPOMP_M.rda",{
     
     #For loop for Confidence intervals
     for (parr in parnames) {
-      estpars <- setdiff(names(theta),c(paste0(parr),"S_0","E_0","R_0","I_0","rho"))# parameter space to be profiled on
+      estpars <- setdiff(names(theta),c(paste0(parr),"S_0","E_0","R_0","I_0"))# parameter space to be profiled on
       
       
       
       theta.t <- partrans(m1,theta,"toEstimationScale")
       theta.t.hi <- theta.t.lo <- theta.t
       #parspace
-      theta.t.lo[estpars] <- theta.t[estpars]-log(5) #Lower bound for parspace to be profiled on
-      theta.t.hi[estpars] <- theta.t[estpars]+log(5) #Upper bound for parspace to be profiled on
+      theta.t.lo[estpars] <- theta.t[estpars]-log(3) #Lower bound for parspace to be profiled on
+      theta.t.hi[estpars] <- theta.t[estpars]+log(3) #Upper bound for parspace to be profiled on
       #estspace
-      FROM <- theta.t[paste0(parr)]-log(5) #Lower bound for parspace to be profiled on
-      TO <- theta.t[paste0(parr)]+log(5) #Upper bound for parspace to be profiled on
+      FROM <- theta.t[paste0(parr)]-log(3) #Lower bound for parspace to be profiled on
+      TO <- theta.t[paste0(parr)]+log(3) #Upper bound for parspace to be profiled on
       
       
       
       profileDesign(
-        assign(paste0(parr),seq(from=FROM ,to=TO ,length=100)),# 2 was 20
+        assign(paste0(parr),seq(from=FROM ,to=TO ,length=60)),# 2 was 20
         lower=theta.t.lo,upper=theta.t.hi,nprof=50            # 4 was 40
       ) -> pd 
       names(pd)[1]<-paste0(parr)
@@ -299,36 +299,40 @@ stew(file="DeterministicPOMP_M.rda",{
                .inorder=FALSE,
                .options.mpi=list(chunkSize=1,seed=1598260027L,info=TRUE)
       ) %dopar% {
-        p <- unlist(p)
+        tryCatch({
+          p <- unlist(p)
+          
+          tic <- Sys.time()
+          
+          library(magrittr)
+          library(plyr)
+          library(reshape2)
+          library(pomp)
+          
+          options(stringsAsFactors=FALSE)
+          
+          
+          
+          m1 %>% 
+            traj.match(start=unlist(p), est = estpars,
+                       method ="subplex",transform = T) -> mf
+          
+          ##################################################################################################'       
+          
+          
+          
+          
+          ll <- logLik(mf)
+          toc <- Sys.time()
+          etime <- toc-tic
+          units(etime) <- "hours"
+          
+          data.frame(as.list(coef(mf)),
+                     loglik = ll,
+                     etime = as.numeric(etime))
+        }, error=function(e){})
         
-        tic <- Sys.time()
-        
-        library(magrittr)
-        library(plyr)
-        library(reshape2)
-        library(pomp)
-        
-        options(stringsAsFactors=FALSE)
-        
-        
-        
-        m1 %>% 
-          traj.match( start=unlist(p), est = estpars,
-                      method ="subplex",transform = T) -> mf
-        
-        ##################################################################################################'       
-        
-        
-        
-        
-        ll <- logLik(mf)
-        toc <- Sys.time()
-        etime <- toc-tic
-        units(etime) <- "hours"
-        
-        data.frame(as.list(coef(mf)),
-                   loglik = ll,
-                   etime = as.numeric(etime))
+
         
       }->dtat
       
