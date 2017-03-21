@@ -24,7 +24,7 @@ stopifnot(packageVersion("pomp")>="1.4.8")
 
 
 daturl <- "http://kingaa.github.io/pomp/vignettes/twentycities.rda"
-datfile <- file.path("/Users/cliffordallotey/Downloads","twentycities.rda") #Change this to be downloaded online  !!!
+datfile <- getwd() #Change this to be downloaded online  !!!
 download.file(daturl,destfile=datfile,mode="wb")
 load(datfile)
 
@@ -281,23 +281,23 @@ stew(file="MyStoch11_pomp_results.rda",{
     
     #For loop for Confidence intervals
     for (parr in parnames) {
-      estpars <- setdiff(names(theta),c(paste0(parr)))# parameter space to be profiled on
+      estpars <- setdiff(names(theta),c(paste0(parr),"S_0","E_0","R_0","I_0"))# parameter space to be profiled on
       
       
       
       theta.t <- partrans(m1,theta,"toEstimationScale")
       theta.t.hi <- theta.t.lo <- theta.t
       #parspace
-      theta.t.lo[estpars] <- theta.t[estpars]-log(5) #Lower bound for parspace to be profiled on
-      theta.t.hi[estpars] <- theta.t[estpars]+log(5) #Upper bound for parspace to be profiled on
+      theta.t.lo[estpars] <- theta.t[estpars]-log(2) #Lower bound for parspace to be profiled on
+      theta.t.hi[estpars] <- theta.t[estpars]+log(2) #Upper bound for parspace to be profiled on
       #estspace
-      FROM <- theta.t[paste0(parr)]-log(5) #Lower bound for parspace to be profiled on
-      TO <- theta.t[paste0(parr)]+log(5) #Upper bound for parspace to be profiled on
+      FROM <- theta.t[paste0(parr)]-log(2) #Lower bound for parspace to be profiled on
+      TO <- theta.t[paste0(parr)]+log(2) #Upper bound for parspace to be profiled on
       
       
       
       profileDesign(
-        assign(paste0(parr),seq(from=FROM ,to=TO ,length=100)),# 2 was 20
+        assign(paste0(parr),seq(from=FROM ,to=TO ,length=50)),# 2 was 20
         lower=theta.t.lo,upper=theta.t.hi,nprof=50            # 4 was 40
       ) -> pd 
       names(pd)[1]<-paste0(parr)
@@ -327,6 +327,7 @@ stew(file="MyStoch11_pomp_results.rda",{
                .inorder=FALSE,
                .options.mpi=list(chunkSize=1,seed=1598260027L,info=TRUE)
       ) %dopar% {
+        tryCatch({
         p <- unlist(p)
         
         tic <- Sys.time()
@@ -345,9 +346,7 @@ stew(file="MyStoch11_pomp_results.rda",{
                Nmif = 50,         # 3 was much higher
                rw.sd = rw.sd(
                  R0=R0_rw.sd, mu=mu_rw.sd, sigma=sigma_rw.sd, gamma=gamma_rw.sd, 
-                 alpha=alpha_rw.sd, iota=iota_rw.sd, rho=rho_rw.sd, sigmaSE=sigmaSE_rw.sd, 
-                 psi=psi_rw.sd, cohort=cohort_rw.sd, amplitude=amplitude_rw.sd,
-                 S_0=ivp(S_0_rw.sd),E_0=ivp(E_0_rw.sd),I_0=ivp(I_0_rw.sd),R_0=ivp(R_0_rw.sd)),
+                 rho=rho_rw.sd, phi=phi_rw.sd, amplitude=amplitude_rw.sd),
                Np = 10000,                          # 10 was 10000
                cooling.type = "geometric",
                cooling.fraction.50 = 0.1,
@@ -381,6 +380,7 @@ stew(file="MyStoch11_pomp_results.rda",{
                    nfail.min = min(nfail),
                    nfail.max = max(nfail),
                    etime = as.numeric(etime))
+        }, error=function(e){})
         
       }->dtat
       
