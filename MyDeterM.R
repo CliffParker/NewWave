@@ -124,7 +124,7 @@ seasonal.sir.ode <- Csnippet("
                              double Beta = beta0*(1+amplitude*cos(2*M_PI*(t-phi)))/pop;
                              
 
-                             DS =  birthrate -  Beta*S*I  - mu*S;
+                             DS =  birthrate/365 -  Beta*S*I  - mu*S;
                              DE =  Beta*S*I - (sigma+mu)*E;
                              DI =  sigma*E - (gamma+mu)*I;
                              DR =  gamma*I  - mu*R;
