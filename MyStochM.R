@@ -24,7 +24,7 @@ stopifnot(packageVersion("pomp")>="1.4.8")
 
 
 daturl <- "http://kingaa.github.io/pomp/vignettes/twentycities.rda"
-datfile <- getwd() #Change this to be downloaded online  !!!
+datfile <- file.path(tempdir(),"twentycities.rda")
 download.file(daturl,destfile=datfile,mode="wb")
 load(datfile)
 
