@@ -99,7 +99,7 @@ for (names in c("London")) {
 
 
 
-  assign( paste0(names,"_BiData"),result)
+  assign( paste0(names,"_cases"),result)
 
 }
 
@@ -319,8 +319,8 @@ fromEst <- Csnippet("
 #################################################################### run ########################'
 #################################################################################################'
 #################################################################################################'
-stew(file="Aaron_pomp_results.rda",{
-
+stew(file="He et al_results.rda",{
+  tic <- Sys.time()
   registerDoParallel()
   #####################################################################################################'
 
@@ -359,155 +359,71 @@ stew(file="Aaron_pomp_results.rda",{
 
     # #######################################################################'
    ####################################################'
-
-    firstFit <- mif2(m1, Nmif = 100, start = parest, Np = 3000, #10 was 10000
+   ####################################################'
+    Fit <- mif2(m1, Nmif = 50, start = parest, Np = 500, #10 was 10000
                      rw.sd = rw.sd(
-                       R0=0.02, sigma=0.02, gamma=0.02,
-                       psi=0.02,  cohort=0.2, amplitude=0.2 ,
-                       S_0=ivp(0.02),E_0=ivp(0.02),I_0=ivp(0.02),R_0=ivp(0.02)
+                       R0=0.00),
+                     transform = T,
+                     cooling.type = "geometric", cooling.fraction.50 = .05,
+                     tol = 1e-17, max.fail = Inf, verbose = getOption("verbose"))
+    
+    
+    
+    
+    firstFit <- mif2(m1, Nmif = 50, start = parest, Np = 50000, #10 was 10000
+                     rw.sd = rw.sd(
+                       R0=0.03, sigma=0.03, gamma=0.03,
+                       psi=0.03,  cohort=0.3, amplitude=0.3 ,
+                       S_0=ivp(0.03),E_0=ivp(0.03),I_0=ivp(0.03),R_0=ivp(0.03)
                       ),
                      transform = T,
                      cooling.type = "geometric", cooling.fraction.50 = .05,
                      tol = 1e-17, max.fail = Inf, verbose = getOption("verbose"))
 
-
-
+ 
     # Second fit with smaller sd's of rw
-    secondFit<-continue(firstFit, Nmif = 150,
+    secondFit<-continue(firstFit, Nmif = 100,
                         rw.sd = rw.sd(
                           R0=0.01, mu=0.01, sigma=0.01, gamma=0.01,
                           alpha=0.01, iota=0.01, rho=0.01, sigmaSE=0.01,
                           psi=0.01, cohort=0.01, amplitude=0.01,
-                          S_0=ivp(0.01),E_0=ivp(0.01),I_0=ivp(0.01),R_0=ivp(0.01)))
+                          S_0=ivp(0.01),E_0=ivp(0.01),I_0=ivp(0.01),R_0=ivp(0.01)))%>%
+      mif2() -> mf
+    
+    ## Runs 10 particle filters to assess Monte Carlo error in likelihood
+    pf <- replicate(30, pfilter(mf, Np = 2000))
+    ll <- sapply(pf,logLik)
+    ll <- logmeanexp(ll, se = TRUE)
+    nfail <- sapply(pf,getElement,"nfail")
+    
+    toc <- Sys.time()
+    etime <- toc-tic
+    units(etime) <- "hours"
+    
+    data.frame(as.list(coef(mf)),
+               loglik = ll[1],
+               loglik.se = ll[2],
+               nfail.min = min(nfail),
+               nfail.max = max(nfail),
+               etime = as.numeric(etime))->result
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
-    theta<-coef(m1) <- coef(firstFit)
+    theta<-coef(m1) <- coef(secondFit)
     #Saving model
     assign(paste0(name,"_Model"),m1)
 
 
-    # Point estimate is in secondFit.
-    ###' Confidence intervals
-    #parnames <- names(coef(m1))
-    parnames <- c("R0","alpha","iota","rho","amplitude")
-
-
-    #For loop for Confidence intervals
-    for (parr in parnames) {
-      estpars <- setdiff(names(theta),c(paste0(parr)))# parameter space to be profiled on
-
-
-
-      theta.t <- partrans(m1,theta,"toEstimationScale")
-      theta.t.hi <- theta.t.lo <- theta.t
-      #parspace
-      theta.t.lo[estpars] <- theta.t[estpars]-log(2) #Lower bound for parspace to be profiled on
-      theta.t.hi[estpars] <- theta.t[estpars]+log(2) #Upper bound for parspace to be profiled on
-      #estspace
-      FROM <- theta.t[paste0(parr)]-log(2) #Lower bound for parspace to be profiled on
-      TO <- theta.t[paste0(parr)]+log(2) #Upper bound for parspace to be profiled on
-
-
-
-      profileDesign(
-        assign(paste0(parr),seq(from=FROM ,to=TO ,length=20)),# 2 was 20
-        lower=theta.t.lo,upper=theta.t.hi,nprof=40            # 4 was 40
-      ) -> pd
-      names(pd)[1]<-paste0(parr)
-
-      pd <- as.data.frame(t(partrans(m1,t(pd),"fromEstimationScale")))
-
-      ########### par_rw.sd
-      for (par in names(coef(m1))) {
-        assign(paste0(par,"_rw.sd"),0.02)
-      }
-      assign(paste0(parr,"_rw.sd"),0)
-
-      ######################################################################################################'
-      ######################################################################################################'
-      #########################  starters   created   for maximisation ######################################'
-      ######################################################################################################'
-
-       ###########################################################################################'
-      ######################################################################################################'
-
-      dtaf<-data.frame()# to store the info
-
-      foreach (p=iter(pd,"row"),
-               .combine=rbind,
-               .errorhandling="remove",
-               .inorder=FALSE,
-               .options.mpi=list(chunkSize=1,seed=1598260027L,info=TRUE)
-      ) %dopar% {
-           p <- unlist(p)
-
-          tic <- Sys.time()
-
-          library(magrittr)
-          library(plyr)
-          library(reshape2)
-          library(pomp)
-
-          options(stringsAsFactors=FALSE)
-
-
-
-          m1 %>%
-            mif2(start = unlist(p),
-                 Nmif = 50,         # 3 was much higher
-                 rw.sd = rw.sd(
-                   R0=R0_rw.sd, mu=mu_rw.sd, sigma=sigma_rw.sd, gamma=gamma_rw.sd,
-                   alpha=alpha_rw.sd, iota=iota_rw.sd, rho=rho_rw.sd, sigmaSE=sigmaSE_rw.sd,
-                   psi=psi_rw.sd, cohort=cohort_rw.sd, amplitude=amplitude_rw.sd,
-                   S_0=ivp(S_0_rw.sd),E_0=ivp(E_0_rw.sd),I_0=ivp(I_0_rw.sd),R_0=ivp(R_0_rw.sd)),
-                 Np = 3000,                          # 10 was 10000
-                 cooling.type = "geometric",
-                 cooling.fraction.50 = 0.1,
-                 transform = TRUE) %>%
-            mif2() -> mf
-
-          ## Runs 10 particle filters to assess Monte Carlo error in likelihood
-          ##################################################################################################'
-          foreach(i=1:5, #2 was 20
-                  .packages="pomp",
-                  .options.multicore=list(set.seed=TRUE)
-          ) %dopar% {
-            pfilter(mf, Np = 2000)
-          } -> pf
-          ##################################################################################################'
-
-
-
-
-          ll <- sapply(pf,logLik)
-          ll <- logmeanexp(ll, se = TRUE)
-          nfail <- sapply(pf,getElement,"nfail")
-
-          toc <- Sys.time()
-          etime <- toc-tic
-          units(etime) <- "hours"
-
-          data.frame(as.list(coef(mf)),
-                     loglik = ll[1],
-                     loglik.se = ll[2],
-                     nfail.min = min(nfail),
-                     nfail.max = max(nfail),
-                     etime = as.numeric(etime))
-
-        }->dtat
-
-      dtaf <- rbind(dtaf,dtat)
-        # Table of info
-
-      assign(paste0(name,"_",parr,"-profile1"),dtaf)
-
-
-      # Confidence interval 95%
-      maxloglik <- max(dtaf[["loglik"]])
-      cutoff <- maxloglik-qchisq(p=0.95,df=1)/2
-      subset(dtaf,loglik>cutoff)-> CI
-      assign(paste0(name,parr,"_CI"),CI)
-
-    }
 
   }
 
